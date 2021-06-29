@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/pkg/logging"
 
 	"github.com/crossplane/provider-aws/apis/identity/v1beta1"
 	awsclients "github.com/crossplane/provider-aws/pkg/clients"
@@ -137,7 +138,7 @@ func CreatePatch(in *iam.Role, target *v1beta1.IAMRoleParameters) (*v1beta1.IAMR
 }
 
 // IsRoleUpToDate checks whether there is a change in any of the modifiable fields in role.
-func IsRoleUpToDate(in v1beta1.IAMRoleParameters, observed iam.Role) (bool, error) {
+func IsRoleUpToDate(in v1beta1.IAMRoleParameters, observed iam.Role, l logging.Logger) (bool, error) {
 	generated, err := copystructure.Copy(&observed)
 	if err != nil {
 		return true, errors.Wrap(err, errCheckUpToDate)
@@ -151,7 +152,14 @@ func IsRoleUpToDate(in v1beta1.IAMRoleParameters, observed iam.Role) (bool, erro
 		return false, err
 	}
 
-	return cmp.Equal(desired, &observed, cmpopts.IgnoreInterfaces(struct{ resource.AttributeReferencer }{})), nil
+	boolUpToDate := cmp.Equal(desired, &observed, cmpopts.IgnoreInterfaces(struct{ resource.AttributeReferencer }{}))
+
+	if boolUpToDate {
+		return boolUpToDate, nil
+	}
+
+	l.Debug("debug here")
+	return boolUpToDate, nil
 }
 
 // DiffIAMTags returns the lists of tags that need to be removed and added according

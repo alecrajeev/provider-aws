@@ -93,7 +93,7 @@ type external struct {
 	kube   client.Client
 }
 
-func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.ExternalObservation, error) {
+func (e *external) Observe(ctx context.Context, mgd resource.Managed, l logging.Logger) (managed.ExternalObservation, error) {
 	cr, ok := mgd.(*v1beta1.IAMRole)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errUnexpectedObject)
@@ -124,7 +124,7 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 
 	cr.Status.AtProvider = iam.GenerateRoleObservation(*observed.Role)
 
-	upToDate, err := iam.IsRoleUpToDate(cr.Spec.ForProvider, role)
+	upToDate, err := iam.IsRoleUpToDate(cr.Spec.ForProvider, role, l)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errUpToDateFailed)
 	}
