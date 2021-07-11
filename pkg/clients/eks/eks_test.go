@@ -25,7 +25,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv1 "github.com/alecrajeev/crossplane-runtime/apis/common/v1"
 
 	"github.com/crossplane/provider-aws/apis/eks/v1beta1"
 )

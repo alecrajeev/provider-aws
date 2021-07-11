@@ -10,7 +10,7 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/alecrajeev/crossplane-runtime/pkg/resource"
 
 	"github.com/crossplane/provider-aws/apis/identity/v1beta1"
 	awsclients "github.com/crossplane/provider-aws/pkg/clients"

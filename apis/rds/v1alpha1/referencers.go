@@ -24,8 +24,8 @@ import (
 	iamv1beta1 "github.com/crossplane/provider-aws/apis/identity/v1beta1"
 	kmsv1alpha1 "github.com/crossplane/provider-aws/apis/kms/v1alpha1"
 
-	"github.com/crossplane/crossplane-runtime/pkg/reference"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/alecrajeev/crossplane-runtime/pkg/reference"
+	"github.com/alecrajeev/crossplane-runtime/pkg/resource"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

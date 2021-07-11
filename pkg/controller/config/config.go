@@ -22,11 +22,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/providerconfig"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/alecrajeev/crossplane-runtime/pkg/event"
+	"github.com/alecrajeev/crossplane-runtime/pkg/logging"
+	"github.com/alecrajeev/crossplane-runtime/pkg/ratelimiter"
+	"github.com/alecrajeev/crossplane-runtime/pkg/reconciler/providerconfig"
+	"github.com/alecrajeev/crossplane-runtime/pkg/resource"
 
 	"github.com/crossplane/provider-aws/apis/v1beta1"
 )

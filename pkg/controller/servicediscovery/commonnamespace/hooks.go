@@ -27,10 +27,10 @@ import (
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	cpresource "github.com/crossplane/crossplane-runtime/pkg/resource"
+	xpv1 "github.com/alecrajeev/crossplane-runtime/apis/common/v1"
+	"github.com/alecrajeev/crossplane-runtime/pkg/meta"
+	"github.com/alecrajeev/crossplane-runtime/pkg/reconciler/managed"
+	cpresource "github.com/alecrajeev/crossplane-runtime/pkg/resource"
 
 	"github.com/crossplane/provider-aws/apis/servicediscovery/v1alpha1"
 	awsclient "github.com/crossplane/provider-aws/pkg/clients"

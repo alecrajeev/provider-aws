@@ -1,6 +1,6 @@
 package v1alpha1
 
-import xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+import xpv1 "github.com/alecrajeev/crossplane-runtime/apis/common/v1"
 
 // CustomServiceParameters are custom parameters for Services.
 type CustomServiceParameters struct{}

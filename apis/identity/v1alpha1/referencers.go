@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/crossplane/crossplane-runtime/pkg/reference"
-	resource "github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/alecrajeev/crossplane-runtime/pkg/reference"
+	resource "github.com/alecrajeev/crossplane-runtime/pkg/resource"
 )
 
 // IAMPolicyARN returns a function that returns the ARN of the given policy.

@@ -24,8 +24,8 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/crossplane/crossplane-runtime/pkg/reference"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/alecrajeev/crossplane-runtime/pkg/reference"
+	"github.com/alecrajeev/crossplane-runtime/pkg/resource"
 )
 
 // SecurityGroupName returns the spec.groupName of a SecurityGroup.

@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-import xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+import xpv1 "github.com/alecrajeev/crossplane-runtime/apis/common/v1"
 
 // CustomBackupParameters are custom parameters for Backup.
 type CustomBackupParameters struct {

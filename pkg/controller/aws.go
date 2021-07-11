@@ -22,7 +22,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
+	"github.com/alecrajeev/crossplane-runtime/pkg/logging"
 
 	"github.com/crossplane/provider-aws/pkg/controller/acm"
 	"github.com/crossplane/provider-aws/pkg/controller/acmpca/certificateauthority"

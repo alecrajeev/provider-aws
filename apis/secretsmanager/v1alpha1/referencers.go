@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/crossplane/crossplane-runtime/pkg/reference"
+	"github.com/alecrajeev/crossplane-runtime/pkg/reference"
 
 	kms "github.com/crossplane/provider-aws/apis/kms/v1alpha1"
 )

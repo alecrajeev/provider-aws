@@ -25,11 +25,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/redshift"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv1 "github.com/alecrajeev/crossplane-runtime/apis/common/v1"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
+	"github.com/alecrajeev/crossplane-runtime/pkg/reconciler/managed"
 
 	"github.com/crossplane/provider-aws/apis/redshift/v1alpha1"
 	awsclients "github.com/crossplane/provider-aws/pkg/clients"

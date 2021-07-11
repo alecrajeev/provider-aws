@@ -10,7 +10,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv1 "github.com/alecrajeev/crossplane-runtime/apis/common/v1"
 
 	"github.com/crossplane/provider-aws/apis/ec2/v1beta1"
 	awsclients "github.com/crossplane/provider-aws/pkg/clients"

@@ -19,7 +19,7 @@ package v1alpha1
 import (
 	"context"
 
-	"github.com/crossplane/crossplane-runtime/pkg/reference"
+	"github.com/alecrajeev/crossplane-runtime/pkg/reference"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/crossplane/provider-aws/apis/ec2/v1beta1"

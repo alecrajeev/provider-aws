@@ -22,7 +22,7 @@ package v1alpha1
 
 import (
 	"github.com/aws/aws-sdk-go-v2/service/acm"
-	"github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/alecrajeev/crossplane-runtime/apis/common/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 

@@ -18,7 +18,7 @@ limitations under the License.
 
 package v1alpha1
 
-import resource "github.com/crossplane/crossplane-runtime/pkg/resource"
+import resource "github.com/alecrajeev/crossplane-runtime/pkg/resource"
 
 // GetItems of this SNSSubscriptionList.
 func (l *SNSSubscriptionList) GetItems() []resource.Managed {

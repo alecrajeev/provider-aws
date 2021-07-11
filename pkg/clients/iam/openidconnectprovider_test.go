@@ -19,7 +19,7 @@ package iam
 import (
 	"testing"
 
-	"github.com/crossplane/crossplane-runtime/pkg/test"
+	"github.com/alecrajeev/crossplane-runtime/pkg/test"
 	"github.com/google/go-cmp/cmp"
 )
 

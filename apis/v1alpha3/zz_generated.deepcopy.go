@@ -21,7 +21,7 @@ limitations under the License.
 package v1alpha3
 
 import (
-	"github.com/crossplane/crossplane-runtime/apis/common/v1"
+	"github.com/alecrajeev/crossplane-runtime/apis/common/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
 
