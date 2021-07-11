@@ -52,6 +52,8 @@ func main() {
 	}
 
 	log.Debug("Starting", "sync-period", syncInterval.String())
+	log.Info("Starting Local debug")
+	
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
