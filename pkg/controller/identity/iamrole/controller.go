@@ -55,9 +55,6 @@ const (
 	errUpToDateFailed   = "cannot check whether object is up-to-date"
 )
 
-// interface defined: https://github.com/crossplane/crossplane-runtime/blob/master/pkg/reconciler/managed/reconciler.go
-// observation defined: https://github.com/crossplane/crossplane-runtime/blob/master/pkg/reconciler/managed/reconciler.go#L614
-
 // SetupIAMRole adds a controller that reconciles IAMRoles.
 func SetupIAMRole(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter, poll time.Duration) error {
 	name := managed.ControllerName(v1beta1.IAMRoleGroupKind)
@@ -127,7 +124,7 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 
 	cr.Status.AtProvider = iam.GenerateRoleObservation(*observed.Role)
 
-	upToDate, err := iam.IsRoleUpToDate(cr.Spec.ForProvider, role)
+	upToDate, field, err := iam.IsRoleUpToDate(cr.Spec.ForProvider, role)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errUpToDateFailed)
 	}
@@ -135,6 +132,7 @@ func (e *external) Observe(ctx context.Context, mgd resource.Managed) (managed.E
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: upToDate,
+		ObservationMessage: field
 	}, nil
 }
 

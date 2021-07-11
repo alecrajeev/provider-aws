@@ -10,11 +10,6 @@ import (
 	"github.com/mitchellh/copystructure"
 	"github.com/pkg/errors"
 
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"github.com/crossplane/crossplane-runtime/pkg/logging"
-	"reflect"
-
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 
 	"github.com/crossplane/provider-aws/apis/identity/v1beta1"
@@ -142,93 +137,30 @@ func CreatePatch(in *iam.Role, target *v1beta1.IAMRoleParameters) (*v1beta1.IAMR
 }
 
 // IsRoleUpToDate checks whether there is a change in any of the modifiable fields in role.
-func IsRoleUpToDate(in v1beta1.IAMRoleParameters, observed iam.Role) (bool, error) {
-	zl := zap.New(zap.UseDevMode(true))
-	log := logging.NewLogrLogger(zl.WithName("provider-aws"))
-	ctrl.SetLogger(zl)
-
-	log.Debug("STARTING LOCAL DEBUG INSIDE IsRoleUpToDate")
+func IsRoleUpToDate(in v1beta1.IAMRoleParameters, observed iam.Role) (bool, string, error) {
 
 	generated, err := copystructure.Copy(&observed)
 	if err != nil {
-		return true, errors.Wrap(err, errCheckUpToDate)
+		return true, "", errors.Wrap(err, errCheckUpToDate)
 	}
 
 	desired, ok := generated.(*iam.Role)
 	if !ok {
-		return true, errors.New(errCheckUpToDate)
+		return true, "", errors.New(errCheckUpToDate)
 	}
 
 	if err = GenerateIAMRole(in, desired); err != nil {
-		return false, err
+		return false, "", err
 	}
 
 	isRoleUpToDate := cmp.Equal(desired, &observed, cmpopts.IgnoreInterfaces(struct{ resource.AttributeReferencer }{}))
+	field := ""
+
 	if !isRoleUpToDate {
-		log.Debug("ROLE IS NOT UP TO DATE")
-
-		// role type is defined: apids/identity/v1beta1/iamrole_types.go
-
-		if *(observed).Arn == *(*desired).Arn {
-			log.Debug("arns are the same")
-		} else {
-			log.Debug("arns are different")
-		}
-
-		if *(observed).AssumeRolePolicyDocument == *(*desired).AssumeRolePolicyDocument {
-			log.Debug("AssumeRolePolicyDocument are the same")
-		} else {
-			log.Debug("AssumeRolePolicyDocument are different")
-		}
-
-		log.Debug("type AssumeRolePolicyDocument:")
-		log.Debug(reflect.TypeOf((*(observed).AssumeRolePolicyDocument)).Name())
-
-		log.Debug("type CreateDate:")
-		log.Debug(reflect.TypeOf((*(observed).CreateDate)).Name())
-
-		log.Debug("type Description:")
-		log.Debug(reflect.TypeOf((*(observed).Description)).Name())
-
-		log.Debug("type MaxSessionDuration:")
-		log.Debug(reflect.TypeOf((*(observed).MaxSessionDuration)).Name())
-
-		log.Debug("type Path:")
-		log.Debug(reflect.TypeOf((*(observed).Path)).Name())
-
-		log.Debug("type PermissionsBoundary:")
-		log.Debug(reflect.TypeOf((*(observed).PermissionsBoundary)).Name())
-
-		log.Debug("type RoleId:")
-		log.Debug(reflect.TypeOf((*(observed).RoleId)).Name())
-
-		log.Debug("type RoleLastUsed:")
-		log.Debug(reflect.TypeOf((*(observed).RoleLastUsed)).Name())
-
-		log.Debug("type RoleName:")
-		log.Debug(reflect.TypeOf((*(observed).RoleName)).Name())
-
-		log.Debug("type Tags:")
-		log.Debug(reflect.TypeOf((*(observed).Tags)).Name())
-
-		log.Debug("desired type:") // *iam.role
-		desiredType := reflect.TypeOf(*desired)
-		for i := 0; i < desiredType.NumField(); i++ {
-			log.Debug(desiredType.Field(i).Name)
-		}
-		log.Debug(*(*desired).Arn)
-
-		log.Debug("observe:")
-		log.Debug(reflect.TypeOf(observed).Name())
-		observedType := reflect.TypeOf(observed)
-		for j := 0; j < observedType.NumField(); j++ {
-			log.Debug(observedType.Field(j).Name)
-		}
-		log.Debug(*(observed).Arn)
-		
+		field = "Arn"
 	}
 
-	return isRoleUpToDate, nil
+	return isRoleUpToDate, field, nil
 }
 
 // DiffIAMTags returns the lists of tags that need to be removed and added according
