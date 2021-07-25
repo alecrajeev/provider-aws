@@ -69,6 +69,7 @@ import (
 	"github.com/crossplane/provider-aws/pkg/controller/eks/nodegroup"
 	"github.com/crossplane/provider-aws/pkg/controller/elasticloadbalancing/elb"
 	"github.com/crossplane/provider-aws/pkg/controller/elasticloadbalancing/elbattachment"
+	"github.com/crossplane/provider-aws/pkg/controller/elasticloadbalancingv2/loadbalancer"
 	"github.com/crossplane/provider-aws/pkg/controller/identity/iamaccesskey"
 	"github.com/crossplane/provider-aws/pkg/controller/identity/iamgroup"
 	"github.com/crossplane/provider-aws/pkg/controller/identity/iamgrouppolicyattachment"
@@ -130,6 +131,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter, poll ti
 		iamuserpolicyattachment.SetupIAMUserPolicyAttachment,
 		iamgrouppolicyattachment.SetupIAMGroupPolicyAttachment,
 		iamrolepolicyattachment.SetupIAMRolePolicyAttachment,
+		loadbalancer.SetupLoadBalancer,
 		vpc.SetupVPC,
 		subnet.SetupSubnet,
 		securitygroup.SetupSecurityGroup,
