@@ -16,5 +16,5 @@ limitations under the License.
 
 package v1alpha1
 
-// CustomFunctionParameters includes custom fields for FunctionParameters.
+// CustomLoadBalancerParameters includes custom fields for LoadBalancerParameters.
 type CustomLoadBalancerParameters struct{}

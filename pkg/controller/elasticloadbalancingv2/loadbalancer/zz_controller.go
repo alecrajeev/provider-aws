@@ -21,9 +21,9 @@ package loadbalancer
 import (
 	"context"
 
-	svcapi "github.com/aws/aws-sdk-go/service/elasticloadbalancingv2"
-	svcsdk "github.com/aws/aws-sdk-go/service/elasticloadbalancingv2"
-	svcsdkapi "github.com/aws/aws-sdk-go/service/elasticloadbalancingv2/elasticloadbalancingv2iface"
+	svcapi "github.com/aws/aws-sdk-go/service/elbv2"
+	svcsdk "github.com/aws/aws-sdk-go/service/elbv2"
+	svcsdkapi "github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
 	"github.com/google/go-cmp/cmp"
 	"github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

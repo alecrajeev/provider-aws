@@ -20,7 +20,7 @@ package loadbalancer
 
 import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	svcsdk "github.com/aws/aws-sdk-go/service/elasticloadbalancingv2"
+	svcsdk "github.com/aws/aws-sdk-go/service/elbv2"
 
 	svcapitypes "github.com/crossplane/provider-aws/apis/elasticloadbalancingv2/v1alpha1"
 )
