@@ -4,7 +4,9 @@ ignore:
     - TargetGroup
     - Rule
   field_paths:
+    - CreateLoadBalancerInput.Name
     - CreateLoadBalancerInput.SecurityGroups
     - CreateLoadBalancerInput.Subnets
+    - DeleteLoadBalancerInput.Name
     - DeleteLoadBalancerInput.SecurityGroups
     - DeleteLoadBalancerInput.Subnets
