@@ -3,3 +3,8 @@ ignore:
     - Listener
     - TargetGroup
     - Rule
+  field_paths:
+    - CreateLoadBalancerInput.SecurityGroups
+    - CreateLoadBalancerInput.Subnets
+    - DeleteLoadBalancerInput.SecurityGroups
+    - DeleteLoadBalancerInput.Subnets

@@ -16,5 +16,28 @@ limitations under the License.
 
 package v1alpha1
 
+import xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+
 // CustomLoadBalancerParameters includes custom fields for LoadBalancerParameters.
-type CustomLoadBalancerParameters struct{}
+type CustomLoadBalancerParameters struct {
+	SecurityGroups []*string `json:"securityGroups,omitempty"`
+
+	// SecurityGroupsRef is a list of references to SecurityGroups used to set
+	// the SecurityGroups.
+	// +optional
+	SecurityGroupsRefs []xpv1.Reference `json:"securityGroupsRefs,omitempty"`
+
+	// SecurityGroupSelector selects references to SecurityGroups
+	// +optional
+	SecurityGroupsSelector *xpv1.Selector `json:"securityGroupsSelector,omitempty"`
+
+	Subnets []*string `json:"subnets,omitempty"`
+
+	// SubnetsRef is a list of references to Subnets
+	// +optional
+	SubnetsRefs []xpv1.Reference `json:"subnetsRefs,omitempty"`
+
+	// SubnetsSelector selects references to Subnets
+	// +optional
+	SubnetsSelector *xpv1.Selector `json:"subnetSelector,omitempty"`
+}
