@@ -39,6 +39,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	svcsdk "github.com/aws/aws-sdk-go/service/elbv2"
+	svcsdkapi "github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -46,6 +47,9 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/pkg/errors"
 
 	awsclient "github.com/crossplane/provider-aws/pkg/clients"
 
@@ -62,6 +66,9 @@ func SetupLoadBalancer(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimi
 			e.postObserve = postObserve
 			e.preDelete = preDelete
 			e.lateInitialize = lateInitialize
+			e.isUpToDate = isUpToDate
+			u := &updater{client: e.client}
+			e.update = u.update
 		},
 	}
 	return ctrl.NewControllerManagedBy(mgr).
@@ -125,4 +132,94 @@ func preDelete(_ context.Context, cr *svcapitypes.LoadBalancer, obj *svcsdk.Dele
 	// so set the External Name to be an ARN.
 	obj.LoadBalancerArn = aws.String(meta.GetExternalName(cr))
 	return false, nil
+}
+
+func isUpToDate(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, error) {
+
+	if aws.StringValue(cr.Spec.ForProvider.IPAddressType) != aws.StringValue(obj.LoadBalancers[0].IpAddressType) {
+		return false, nil
+	}
+
+	if !isUpToDateSecurityGroups(cr, obj) {
+		return true, nil
+	}
+
+	if !isUpToDateSubnets(cr, obj) {
+		return true, nil
+	}
+
+	return true, nil
+}
+
+func isUpToDateSecurityGroups(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) bool {
+	// Handle nil pointer refs
+	var securityGroups []*string
+	var awsSecurityGroups []*string
+
+	if cr.Spec.ForProvider.SecurityGroups != nil {
+		securityGroups = cr.Spec.ForProvider.SecurityGroups
+	}
+
+	if obj.LoadBalancers[0].SecurityGroups != nil {
+		awsSecurityGroups = obj.LoadBalancers[0].SecurityGroups
+	}
+
+	// Compare whether the slices are equal, ignore ordering
+	sortCmp := cmpopts.SortSlices(func(i, j *string) bool {
+		return aws.StringValue(i) < aws.StringValue(j)
+	})
+
+	return cmp.Equal(securityGroups, awsSecurityGroups, sortCmp, cmpopts.EquateEmpty())
+}
+
+func isUpToDateSubnets(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) bool {
+	// Handle nil pointer refs
+	var subnets []*string
+	var awsSubnets []*string
+
+	if cr.Spec.ForProvider.Subnets != nil {
+		subnets = cr.Spec.ForProvider.Subnets
+	}
+
+	if obj.LoadBalancers[0].AvailabilityZones != nil {
+		for s := range obj.LoadBalancers[0].AvailabilityZones {
+			awsSubnets = append(awsSubnets, obj.LoadBalancers[0].AvailabilityZones[s].SubnetId)
+		}
+	}
+
+	// Compare whether the slices are equal, ignore ordering
+	sortCmp := cmpopts.SortSlices(func(i, j *string) bool {
+		return aws.StringValue(i) < aws.StringValue(j)
+	})
+
+	return cmp.Equal(subnets, awsSubnets, sortCmp, cmpopts.EquateEmpty())
+}
+
+type updater struct {
+	client svcsdkapi.ELBV2API
+}
+
+func (u *updater) update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
+	cr, ok := mg.(*svcapitypes.LoadBalancer)
+	if !ok {
+		return managed.ExternalUpdate{}, errors.New(errUnexpectedObject)
+	}
+
+	// https://docs.aws.amazon.com/sdk-for-go/api/service/elbv2/#ELBV2.SetIpAddressType
+	setIpAddressTypeInput := GenerateSetIpAddressTypeInput(cr)
+	if _, err := u.client.SetIpAddressTypeWithContext(ctx, setIpAddressTypeInput); err != nil {
+		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+	}
+
+	return managed.ExternalUpdate{}, nil
+}
+
+// GenerateSetIpAddressTypeInput is similar to GenerateCreateLoadBalancerInput
+// Except it only sets the ip address type
+func GenerateSetIpAddressTypeInput(cr *svcapitypes.LoadBalancer) *svcsdk.SetIpAddressTypeInput {
+	f0 := &svcsdk.SetIpAddressTypeInput{}
+	f0.SetLoadBalancerArn(meta.GetExternalName(cr))
+	f0.SetIpAddressType(*cr.Spec.ForProvider.IPAddressType)
+
+	return f0
 }
