@@ -140,21 +140,23 @@ func preDelete(_ context.Context, cr *svcapitypes.LoadBalancer, obj *svcsdk.Dele
 
 func isUpToDate(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string, error) {
 
-	if aws.StringValue(cr.Spec.ForProvider.IPAddressType) != aws.StringValue(obj.LoadBalancers[0].IpAddressType) {
-		return false, "", nil
+	diffIPAddressType := cmp.Diff(aws.StringValue(cr.Spec.ForProvider.IPAddressType), aws.StringValue(obj.LoadBalancers[0].IpAddressType))
+
+	if diffIPAddressType != "" {
+		return false, diffIPAddressType, nil
 	}
 
-	val, msg := isUpToDateSecurityGroups(cr, obj)
-
-	if !val {
-		return false, msg, nil
+	isUpToDateSecurityGroups, msgSecurityGroups := isUpToDateSecurityGroups(cr, obj)
+	if !isUpToDateSecurityGroups {
+		return false, msgSecurityGroups, nil
 	}
 
-	if !isUpToDateSubnets(cr, obj) {
-		return true, msg, nil
+	isUpToDateSubnets, msgSubnets := isUpToDateSubnets(cr, obj)
+	if !isUpToDateSubnets {
+		return false, msgSubnets, nil
 	}
 
-	return true, msg, nil
+	return true, "", nil
 }
 
 func isUpToDateSecurityGroups(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string) {
@@ -175,10 +177,12 @@ func isUpToDateSecurityGroups(cr *svcapitypes.LoadBalancer, obj *svcsdk.Describe
 		return aws.StringValue(i) < aws.StringValue(j)
 	})
 
-	return cmp.Equal(securityGroups, awsSecurityGroups, sortCmp, cmpopts.EquateEmpty()), ""
+	diff := cmp.Diff(securityGroups, awsSecurityGroups, sortCmp, cmpopts.EquateEmpty())
+
+	return diff == "", diff
 }
 
-func isUpToDateSubnets(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) bool {
+func isUpToDateSubnets(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string) {
 	// Handle nil pointer refs
 	var subnets []*string
 	var awsSubnets []*string
@@ -198,7 +202,9 @@ func isUpToDateSubnets(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBal
 		return aws.StringValue(i) < aws.StringValue(j)
 	})
 
-	return cmp.Equal(subnets, awsSubnets, sortCmp, cmpopts.EquateEmpty())
+	diff := cmp.Diff(subnets, awsSubnets, sortCmp, cmpopts.EquateEmpty())
+
+	return diff == "", diff
 }
 
 type updater struct {
@@ -217,6 +223,18 @@ func (u *updater) update(ctx context.Context, mg resource.Managed) (managed.Exte
 		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
 	}
 
+	// https://docs.aws.amazon.com/sdk-for-go/api/service/elbv2/#ELBV2.SetSecurityGroups
+	setSecurityGroupsInput := GenerateSetSecurityGroupsInput(cr)
+	if _, err := u.client.SetSecurityGroupsWithContext(ctx, setSecurityGroupsInput); err != nil {
+		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+	}
+
+	// https://docs.aws.amazon.com/sdk-for-go/api/service/elbv2/#ELBV2.SetSubnets
+	setSubnetsInput := GenerateSetSubnetsInput(cr)
+	if _, err := u.client.SetSubnetsWithContext(ctx, setSubnetsInput); err != nil {
+		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+	}
+
 	return managed.ExternalUpdate{}, nil
 }
 
@@ -226,6 +244,26 @@ func GenerateSetIPAddressTypeInput(cr *svcapitypes.LoadBalancer) *svcsdk.SetIpAd
 	f0 := &svcsdk.SetIpAddressTypeInput{}
 	f0.SetLoadBalancerArn(meta.GetExternalName(cr))
 	f0.SetIpAddressType(*cr.Spec.ForProvider.IPAddressType)
+
+	return f0
+}
+
+// GenerateSetSecurityGroupsInput is similar to GenerateCreateLoadBalancerInput
+// Except it only sets updated security groups
+func GenerateSetSecurityGroupsInput(cr *svcapitypes.LoadBalancer) *svcsdk.SetSecurityGroupsInput {
+	f0 := &svcsdk.SetSecurityGroupsInput{}
+	f0.SetLoadBalancerArn(meta.GetExternalName(cr))
+	f0.SetSecurityGroups(cr.Spec.ForProvider.SecurityGroups)
+
+	return f0
+}
+
+// GenerateSetSubnetsInput is similar to GenerateCreaetLoadBalancerInput
+// Except it sets the Subnets
+func GenerateSetSubnetsInput(cr *svcapitypes.LoadBalancer) *svcsdk.SetSubnetsInput {
+	f0 := &svcsdk.SetSubnetsInput{}
+	f0.SetLoadBalancerArn(meta.GetExternalName(cr))
+	f0.SetSubnets(cr.Spec.ForProvider.Subnets)
 
 	return f0
 }
