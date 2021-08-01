@@ -92,6 +92,10 @@ func lateInitialize(cr *svcapitypes.LoadBalancerParameters, resp *svcsdk.Describ
 
 	cr.IPAddressType = awsclient.LateInitializeStringPtr(cr.IPAddressType, loadBalancer.IpAddressType)
 	cr.Scheme = awsclient.LateInitializeStringPtr(cr.Scheme, loadBalancer.Scheme)
+	// for albs, the default security group gets set if not specified during creation
+	if *cr.Type == "application" {
+		cr.SecurityGroups = awsclient.LateInitializeStringPtrArray(cr.SecurityGroups, loadBalancer.SecurityGroups)
+	}
 
 	return nil
 }
@@ -134,24 +138,26 @@ func preDelete(_ context.Context, cr *svcapitypes.LoadBalancer, obj *svcsdk.Dele
 	return false, nil
 }
 
-func isUpToDate(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, error) {
+func isUpToDate(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string, error) {
 
 	if aws.StringValue(cr.Spec.ForProvider.IPAddressType) != aws.StringValue(obj.LoadBalancers[0].IpAddressType) {
-		return false, nil
+		return false, "", nil
 	}
 
-	if !isUpToDateSecurityGroups(cr, obj) {
-		return true, nil
+	val, msg := isUpToDateSecurityGroups(cr, obj)
+
+	if !val {
+		return false, msg, nil
 	}
 
 	if !isUpToDateSubnets(cr, obj) {
-		return true, nil
+		return true, msg, nil
 	}
 
-	return true, nil
+	return true, msg, nil
 }
 
-func isUpToDateSecurityGroups(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) bool {
+func isUpToDateSecurityGroups(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string) {
 	// Handle nil pointer refs
 	var securityGroups []*string
 	var awsSecurityGroups []*string
@@ -169,7 +175,7 @@ func isUpToDateSecurityGroups(cr *svcapitypes.LoadBalancer, obj *svcsdk.Describe
 		return aws.StringValue(i) < aws.StringValue(j)
 	})
 
-	return cmp.Equal(securityGroups, awsSecurityGroups, sortCmp, cmpopts.EquateEmpty())
+	return cmp.Equal(securityGroups, awsSecurityGroups, sortCmp, cmpopts.EquateEmpty()), ""
 }
 
 func isUpToDateSubnets(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) bool {
@@ -206,17 +212,17 @@ func (u *updater) update(ctx context.Context, mg resource.Managed) (managed.Exte
 	}
 
 	// https://docs.aws.amazon.com/sdk-for-go/api/service/elbv2/#ELBV2.SetIpAddressType
-	setIpAddressTypeInput := GenerateSetIpAddressTypeInput(cr)
-	if _, err := u.client.SetIpAddressTypeWithContext(ctx, setIpAddressTypeInput); err != nil {
+	setIPAddressTypeInput := GenerateSetIPAddressTypeInput(cr)
+	if _, err := u.client.SetIpAddressTypeWithContext(ctx, setIPAddressTypeInput); err != nil {
 		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
 	}
 
 	return managed.ExternalUpdate{}, nil
 }
 
-// GenerateSetIpAddressTypeInput is similar to GenerateCreateLoadBalancerInput
+// GenerateSetIPAddressTypeInput is similar to GenerateCreateLoadBalancerInput
 // Except it only sets the ip address type
-func GenerateSetIpAddressTypeInput(cr *svcapitypes.LoadBalancer) *svcsdk.SetIpAddressTypeInput {
+func GenerateSetIPAddressTypeInput(cr *svcapitypes.LoadBalancer) *svcsdk.SetIpAddressTypeInput {
 	f0 := &svcsdk.SetIpAddressTypeInput{}
 	f0.SetLoadBalancerArn(meta.GetExternalName(cr))
 	f0.SetIpAddressType(*cr.Spec.ForProvider.IPAddressType)

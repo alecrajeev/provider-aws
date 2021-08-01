@@ -463,6 +463,15 @@ func LateInitializeString(in string, from *string) string {
 	return in
 }
 
+// LateInitializeStringPtrArray returns `in` if it has a non-zero length.
+// Otherwise returns from.
+func LateInitializeStringPtrArray(in []*string, from []*string) []*string {
+	if len(in) > 0 {
+		return in
+	}
+	return from
+}
+
 // LateInitializeTimePtr returns in if it's non-nil, otherwise returns from
 // which is the backup for the cases in is nil.
 func LateInitializeTimePtr(in *metav1.Time, from *time.Time) *metav1.Time {

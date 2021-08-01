@@ -93,7 +93,7 @@ func (e *external) Observe(ctx context.Context, mg cpresource.Managed) (managed.
 	}
 	GenerateLoadBalancer(resp).Status.AtProvider.DeepCopyInto(&cr.Status.AtProvider)
 
-	upToDate, err := e.isUpToDate(cr, resp)
+	upToDate, diff, err := e.isUpToDate(cr, resp)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, "isUpToDate check failed")
 	}
@@ -101,6 +101,7 @@ func (e *external) Observe(ctx context.Context, mg cpresource.Managed) (managed.
 		ResourceExists:          true,
 		ResourceUpToDate:        upToDate,
 		ResourceLateInitialized: !cmp.Equal(&cr.Spec.ForProvider, currentSpec),
+		Diff:                    diff,
 	}, nil)
 }
 
@@ -272,7 +273,7 @@ type external struct {
 	postObserve    func(context.Context, *svcapitypes.LoadBalancer, *svcsdk.DescribeLoadBalancersOutput, managed.ExternalObservation, error) (managed.ExternalObservation, error)
 	filterList     func(*svcapitypes.LoadBalancer, *svcsdk.DescribeLoadBalancersOutput) *svcsdk.DescribeLoadBalancersOutput
 	lateInitialize func(*svcapitypes.LoadBalancerParameters, *svcsdk.DescribeLoadBalancersOutput) error
-	isUpToDate     func(*svcapitypes.LoadBalancer, *svcsdk.DescribeLoadBalancersOutput) (bool, error)
+	isUpToDate     func(*svcapitypes.LoadBalancer, *svcsdk.DescribeLoadBalancersOutput) (bool, string, error)
 	preCreate      func(context.Context, *svcapitypes.LoadBalancer, *svcsdk.CreateLoadBalancerInput) error
 	postCreate     func(context.Context, *svcapitypes.LoadBalancer, *svcsdk.CreateLoadBalancerOutput, managed.ExternalCreation, error) (managed.ExternalCreation, error)
 	preDelete      func(context.Context, *svcapitypes.LoadBalancer, *svcsdk.DeleteLoadBalancerInput) (bool, error)
@@ -293,8 +294,8 @@ func nopFilterList(_ *svcapitypes.LoadBalancer, list *svcsdk.DescribeLoadBalance
 func nopLateInitialize(*svcapitypes.LoadBalancerParameters, *svcsdk.DescribeLoadBalancersOutput) error {
 	return nil
 }
-func alwaysUpToDate(*svcapitypes.LoadBalancer, *svcsdk.DescribeLoadBalancersOutput) (bool, error) {
-	return true, nil
+func alwaysUpToDate(*svcapitypes.LoadBalancer, *svcsdk.DescribeLoadBalancersOutput) (bool, string, error) {
+	return true, "", nil
 }
 
 func nopPreCreate(context.Context, *svcapitypes.LoadBalancer, *svcsdk.CreateLoadBalancerInput) error {
