@@ -40,4 +40,37 @@ type CustomLoadBalancerParameters struct {
 	// SubnetsSelector selects references to Subnets
 	// +optional
 	SubnetsSelector *xpv1.Selector `json:"subnetSelector,omitempty"`
+
+	// CustomSubnetMappingsParameters are subnet mappings
+	// +optional
+	CustomSubnetMappingsParameters []CustomSubnetMappingParameter `json:"subnetMappings,omitempty"`
+}
+
+// CustomSubnetMappingParameter includes custom fields for a SubnetMapping
+type CustomSubnetMappingParameter struct {
+	IPv6Address *string `json:"iPv6Address,omitempty"`
+
+	PrivateIPv4Address *string `json:"privateIPv4Address,omitempty"`
+
+	SubnetID *string `json:"subnetID,omitempty"`
+
+	// SubnetIDRefs is a references to a Subnet.
+	// +optional
+	SubnetIDRefs *xpv1.Reference `json:"subnetIDRefs,omitempty"`
+
+	// SubnetIDSelector selects references to a Subnet.
+	// +optional
+	SubnetIDSelector *xpv1.Selector `json:"subnetIDSelector,omitempty"`
+
+	AllocationID *string `json:"allocationID,omitempty"`
+
+	// AllocationIDRefs is a reference to an AllocationID
+	// that corresponds to an elastic ip address.
+	// +optional
+	AllocationIDRefs *xpv1.Reference `json:"allocationIDRefs,omitempty"`
+
+	// AllocationIDSelector is a selector to an AllocationID
+	// that corresponds to an elastic ip address.
+	// +optional
+	AllocationIDSelector *xpv1.Selector `json:"allocationIDSelector,omitempty"`
 }

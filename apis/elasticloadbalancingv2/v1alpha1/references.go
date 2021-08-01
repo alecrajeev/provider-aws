@@ -58,5 +58,35 @@ func (mg *LoadBalancer) ResolveReferences(ctx context.Context, c client.Reader) 
 	mg.Spec.ForProvider.Subnets = reference.ToPtrValues(mrsp.ResolvedValues)
 	mg.Spec.ForProvider.SubnetsRefs = mrsp.ResolvedReferences
 
+	// Resolve for Subnets and Elastic Ips in SubnetMappings
+	for i := range mg.Spec.ForProvider.CustomSubnetMappingsParameters {
+		rsp, err := r.Resolve(ctx, reference.ResolutionRequest{
+			CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].SubnetID),
+			Reference:    mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].SubnetIDRefs,
+			Selector:     mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].SubnetIDSelector,
+			To:           reference.To{Managed: &ec2.Subnet{}, List: &ec2.SubnetList{}},
+			Extract:      reference.ExternalName(),
+		})
+		if err != nil {
+			return errors.Wrap(err, "spec.forProvider.subnetMappings.subnetID")
+		}
+		mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].SubnetID = reference.ToPtrValue(rsp.ResolvedValue)
+		mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].SubnetIDRefs = rsp.ResolvedReference
+
+		// Resolve for spec.forProvider.SubnetMappings[0].allocationID
+		rspAddress, errAddress := r.Resolve(ctx, reference.ResolutionRequest{
+			CurrentValue: reference.FromPtrValue(mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].AllocationID),
+			Reference:    mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].AllocationIDRefs,
+			Selector:     mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].AllocationIDSelector,
+			To:           reference.To{Managed: &ec2.Address{}, List: &ec2.AddressList{}},
+			Extract:      reference.ExternalName(),
+		})
+		if errAddress != nil {
+			return errors.Wrap(errAddress, "spec.forProvider.subnetMappings.allocationID")
+		}
+		mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].AllocationID = reference.ToPtrValue(rsp.ResolvedValue)
+		mg.Spec.ForProvider.CustomSubnetMappingsParameters[i].AllocationIDRefs = rspAddress.ResolvedReference
+	}
+
 	return nil
 }

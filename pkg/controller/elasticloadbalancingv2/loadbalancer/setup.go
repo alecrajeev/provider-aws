@@ -151,9 +151,16 @@ func isUpToDate(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersO
 		return false, msgSecurityGroups, nil
 	}
 
-	isUpToDateSubnets, msgSubnets := isUpToDateSubnets(cr, obj)
-	if !isUpToDateSubnets {
-		return false, msgSubnets, nil
+	if len(cr.Spec.ForProvider.SubnetMappings) > 0 {
+		isUpToDateSubnetMappings, msgSubnetMappings := isUpToDateSubnetMappings(cr, obj)
+		if !isUpToDateSubnetMappings {
+			return false, msgSubnetMappings, nil
+		}
+	} else {
+		isUpToDateSubnets, msgSubnets := isUpToDateSubnets(cr, obj)
+		if !isUpToDateSubnets {
+			return false, msgSubnets, nil
+		}
 	}
 
 	return true, "", nil
@@ -183,18 +190,21 @@ func isUpToDateSecurityGroups(cr *svcapitypes.LoadBalancer, obj *svcsdk.Describe
 }
 
 func isUpToDateSubnets(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string) {
+	var loadBalancerAzs []*svcsdk.AvailabilityZone
+	if len(obj.LoadBalancers) > 0 {
+		loadBalancerAzs = obj.LoadBalancers[0].AvailabilityZones
+	}
+
 	// Handle nil pointer refs
 	var subnets []*string
-	var awsSubnets []*string
+	awsSubnets := make([]*string, len(loadBalancerAzs))
 
 	if cr.Spec.ForProvider.Subnets != nil {
 		subnets = cr.Spec.ForProvider.Subnets
 	}
 
-	if obj.LoadBalancers[0].AvailabilityZones != nil {
-		for s := range obj.LoadBalancers[0].AvailabilityZones {
-			awsSubnets = append(awsSubnets, obj.LoadBalancers[0].AvailabilityZones[s].SubnetId)
-		}
+	for i := range loadBalancerAzs {
+		awsSubnets[i] = loadBalancerAzs[i].SubnetId
 	}
 
 	// Compare whether the slices are equal, ignore ordering
@@ -203,6 +213,53 @@ func isUpToDateSubnets(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBal
 	})
 
 	diff := cmp.Diff(subnets, awsSubnets, sortCmp, cmpopts.EquateEmpty())
+
+	return diff == "", diff
+}
+
+func isUpToDateSubnetMappings(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string) {
+	var loadBalancerAzs []*svcsdk.AvailabilityZone
+	if len(obj.LoadBalancers) > 0 {
+		loadBalancerAzs = obj.LoadBalancers[0].AvailabilityZones
+	}
+
+	// Handle nil pointer refs
+	var subnetMappings []*svcapitypes.SubnetMapping
+	awsSubnetMappings := make([]*svcapitypes.SubnetMapping, len(loadBalancerAzs))
+
+	if cr.Spec.ForProvider.SubnetMappings != nil {
+		subnetMappings = cr.Spec.ForProvider.SubnetMappings
+	}
+
+	for i := range loadBalancerAzs {
+		// Define the SubnetMapping from the observed output.
+		// Assumes only one LoadBalancer address because only
+		// one is supported.
+		var address *svcsdk.LoadBalancerAddress
+		var allocationID *string
+		var iPv6Address *string
+		var privateIPv4Address *string
+		if len(loadBalancerAzs[i].LoadBalancerAddresses) > 0 {
+			address = loadBalancerAzs[i].LoadBalancerAddresses[0]
+			allocationID = address.AllocationId
+			iPv6Address = address.IPv6Address
+			privateIPv4Address = address.PrivateIPv4Address
+		}
+		awsSubnetMappings[i] = &svcapitypes.SubnetMapping{
+			AllocationID:       allocationID,
+			IPv6Address:        iPv6Address,
+			PrivateIPv4Address: privateIPv4Address,
+			SubnetID:           loadBalancerAzs[i].SubnetId,
+		}
+	}
+
+	// Compare whether the slices are equal, ignore ordering.
+	// Sort by SubnetID alphabetically.
+	sortCmp := cmpopts.SortSlices(func(s, p *svcapitypes.SubnetMapping) bool {
+		return aws.StringValue(s.SubnetID) < aws.StringValue(p.SubnetID)
+	})
+
+	diff := cmp.Diff(subnetMappings, awsSubnetMappings, sortCmp, cmpopts.EquateEmpty())
 
 	return diff == "", diff
 }
@@ -223,10 +280,13 @@ func (u *updater) update(ctx context.Context, mg resource.Managed) (managed.Exte
 		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
 	}
 
-	// https://docs.aws.amazon.com/sdk-for-go/api/service/elbv2/#ELBV2.SetSecurityGroups
-	setSecurityGroupsInput := GenerateSetSecurityGroupsInput(cr)
-	if _, err := u.client.SetSecurityGroupsWithContext(ctx, setSecurityGroupsInput); err != nil {
-		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+	// Only set security groups if they exist. Network Load Balancers don't have security groups.
+	if len(cr.Spec.ForProvider.SecurityGroups) > 0 {
+		// https://docs.aws.amazon.com/sdk-for-go/api/service/elbv2/#ELBV2.SetSecurityGroups
+		setSecurityGroupsInput := GenerateSetSecurityGroupsInput(cr)
+		if _, err := u.client.SetSecurityGroupsWithContext(ctx, setSecurityGroupsInput); err != nil {
+			return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+		}
 	}
 
 	// https://docs.aws.amazon.com/sdk-for-go/api/service/elbv2/#ELBV2.SetSubnets
@@ -259,11 +319,25 @@ func GenerateSetSecurityGroupsInput(cr *svcapitypes.LoadBalancer) *svcsdk.SetSec
 }
 
 // GenerateSetSubnetsInput is similar to GenerateCreaetLoadBalancerInput
-// Except it sets the Subnets
+// Except it sets the Subnets or SubnetMappings
 func GenerateSetSubnetsInput(cr *svcapitypes.LoadBalancer) *svcsdk.SetSubnetsInput {
 	f0 := &svcsdk.SetSubnetsInput{}
 	f0.SetLoadBalancerArn(meta.GetExternalName(cr))
-	f0.SetSubnets(cr.Spec.ForProvider.Subnets)
+	if len(cr.Spec.ForProvider.SubnetMappings) > 0 {
+		var subnetMappings []*svcsdk.SubnetMapping
+		for _, subnetMapping := range cr.Spec.ForProvider.SubnetMappings {
+			subnetMapping := svcsdk.SubnetMapping{
+				AllocationId:       subnetMapping.AllocationID,
+				IPv6Address:        subnetMapping.IPv6Address,
+				PrivateIPv4Address: subnetMapping.PrivateIPv4Address,
+				SubnetId:           subnetMapping.SubnetID,
+			}
+			subnetMappings = append(subnetMappings, &subnetMapping)
+		}
+		f0.SetSubnetMappings(subnetMappings)
+	} else {
+		f0.SetSubnets(cr.Spec.ForProvider.Subnets)
+	}
 
 	return f0
 }
