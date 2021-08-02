@@ -16,30 +16,20 @@ limitations under the License.
 
 package loadbalancer
 
-/*
-TODO: Fix Order
-
-	<stdlib pkgs>
-
-	<external pkgs (anything not in github.com/crossplane)>
-
-	<crossplane org pkgs>
-
-	<local to this repo pkgs>
-
-*/
-
 import (
 	"context"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	svcsdk "github.com/aws/aws-sdk-go/service/elbv2"
+	svcsdkapi "github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/pkg/errors"
 	"k8s.io/client-go/util/workqueue"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
-	"github.com/aws/aws-sdk-go/aws"
-	svcsdk "github.com/aws/aws-sdk-go/service/elbv2"
-	svcsdkapi "github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
@@ -47,14 +37,10 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/pkg/errors"
-
-	awsclient "github.com/crossplane/provider-aws/pkg/clients"
 
 	"github.com/crossplane/provider-aws/apis/elasticloadbalancingv2/v1alpha1"
 	svcapitypes "github.com/crossplane/provider-aws/apis/elasticloadbalancingv2/v1alpha1"
+	awsclient "github.com/crossplane/provider-aws/pkg/clients"
 )
 
 // SetupLoadBalancer adds a controller that reconciles LoadBalancer.
@@ -138,7 +124,7 @@ func preDelete(_ context.Context, cr *svcapitypes.LoadBalancer, obj *svcsdk.Dele
 	return false, nil
 }
 
-func isUpToDate(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string, error) {
+func isUpToDate(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput, objTags *svcsdk.DescribeTagsOutput) (bool, string, error) {
 
 	diffIPAddressType := cmp.Diff(aws.StringValue(cr.Spec.ForProvider.IPAddressType), aws.StringValue(obj.LoadBalancers[0].IpAddressType))
 
@@ -146,24 +132,26 @@ func isUpToDate(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersO
 		return false, diffIPAddressType, nil
 	}
 
-	isUpToDateSecurityGroups, msgSecurityGroups := isUpToDateSecurityGroups(cr, obj)
+	isUpToDateSecurityGroups, diffSecurityGroups := isUpToDateSecurityGroups(cr, obj)
 	if !isUpToDateSecurityGroups {
-		return false, msgSecurityGroups, nil
+		return false, diffSecurityGroups, nil
 	}
 
 	if len(cr.Spec.ForProvider.SubnetMappings) > 0 {
-		isUpToDateSubnetMappings, msgSubnetMappings := isUpToDateSubnetMappings(cr, obj)
+		isUpToDateSubnetMappings, diffSubnetMappings := isUpToDateSubnetMappings(cr, obj)
 		if !isUpToDateSubnetMappings {
-			return false, msgSubnetMappings, nil
+			return false, diffSubnetMappings, nil
 		}
 	} else {
-		isUpToDateSubnets, msgSubnets := isUpToDateSubnets(cr, obj)
+		isUpToDateSubnets, diffSubnets := isUpToDateSubnets(cr, obj)
 		if !isUpToDateSubnets {
-			return false, msgSubnets, nil
+			return false, diffSubnets, nil
 		}
 	}
 
-	return true, "", nil
+	addTags, removeTags, diffTags := diffTags(cr.Spec.ForProvider.Tags, objTags)
+
+	return len(addTags) == 0 && len(removeTags) == 0, diffTags, nil
 }
 
 func isUpToDateSecurityGroups(cr *svcapitypes.LoadBalancer, obj *svcsdk.DescribeLoadBalancersOutput) (bool, string) {
@@ -264,10 +252,48 @@ func isUpToDateSubnetMappings(cr *svcapitypes.LoadBalancer, obj *svcsdk.Describe
 	return diff == "", diff
 }
 
+// returns which AWS Tags exist in the resource tags and which are outdated and should be removed
+func diffTags(spec []*svcapitypes.Tag, current *svcsdk.DescribeTagsOutput) (map[string]*string, []*string, string) {
+	currentTags := GenerateMapFromTagsResponseOutput(current)
+	specTags := GenerateMapFromTagsCR(spec)
+
+	addMap := make(map[string]*string, len(specTags))
+	removeTags := make([]*string, 0)
+
+	for k, v := range currentTags {
+		if awsclient.StringValue(specTags[k]) == awsclient.StringValue(v) {
+			continue
+		}
+		removeTags = append(removeTags, awsclient.String(k))
+	}
+	for k, v := range specTags {
+		if awsclient.StringValue(currentTags[k]) == awsclient.StringValue(v) {
+			continue
+		}
+		addMap[k] = v
+	}
+	diffTags := ""
+	if len(addMap) > 0 {
+		diffTags += "AddTags: "
+		for k, v := range addMap {
+			diffTags += k + ": " + *v + ", "
+		}
+	}
+	if len(removeTags) > 0 {
+		diffTags += "\nRemoveTags: "
+		for _, key := range removeTags {
+			diffTags += *key + ", "
+		}
+	}
+
+	return addMap, removeTags, diffTags
+}
+
 type updater struct {
 	client svcsdkapi.ELBV2API
 }
 
+// nolint:gocyclo
 func (u *updater) update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
 	cr, ok := mg.(*svcapitypes.LoadBalancer)
 	if !ok {
@@ -293,6 +319,28 @@ func (u *updater) update(ctx context.Context, mg resource.Managed) (managed.Exte
 	setSubnetsInput := GenerateSetSubnetsInput(cr)
 	if _, err := u.client.SetSubnetsWithContext(ctx, setSubnetsInput); err != nil {
 		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+	}
+
+	// Tags
+	tagInput := GenerateDescribeTagsInput(cr)
+	tags, err := u.client.DescribeTagsWithContext(ctx, tagInput)
+	if err != nil {
+		return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+	}
+
+	addTags, removeTags, _ := diffTags(cr.Spec.ForProvider.Tags, tags)
+	// Remove old tags before adding new tags in case values change for keys
+	if len(removeTags) > 0 {
+		tagsRemoveInput := GenerateRemoveTagsInput(removeTags, cr)
+		if _, err := u.client.RemoveTagsWithContext(ctx, tagsRemoveInput); err != nil {
+			return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+		}
+	}
+	if len(addTags) > 0 {
+		tagsAddInput := GenerateAddTagsInput(addTags, cr)
+		if _, err := u.client.AddTagsWithContext(ctx, tagsAddInput); err != nil {
+			return managed.ExternalUpdate{}, awsclient.Wrap(err, errUpdate)
+		}
 	}
 
 	return managed.ExternalUpdate{}, nil
