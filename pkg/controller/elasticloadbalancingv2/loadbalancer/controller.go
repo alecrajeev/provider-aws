@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 // Code originally genrated by ack-generate.
-// Edited to support tags and diff messages.
+// Edited Observe to support tags and diff messages.
 
 package loadbalancer
 
