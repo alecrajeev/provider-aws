@@ -17,22 +17,27 @@ limitations under the License.
 package loadbalancer
 
 import (
-	"strconv"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
+	"github.com/aws/aws-sdk-go-v2/aws"
 	svcsdk "github.com/aws/aws-sdk-go/service/elbv2"
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/crossplane/crossplane-runtime/pkg/test"
 	"github.com/crossplane/provider-aws/apis/elasticloadbalancingv2/v1alpha1"
 )
 
 var (
-	loadBalancerName = "ccloadbalancer"
+	testLoadBalancerNilSecurityGroups = svcsdk.LoadBalancer{
+		LoadBalancerName: aws.String("testloadbalancer"),
+	}
 
-	testLoadBalancer = svcsdk.LoadBalancer{
-		LoadBalancerName: &loadBalancerName,
+	testLoadBalancerEmptySecurityGroups = svcsdk.LoadBalancer{
+		SecurityGroups: []*string{},
+	}
+
+	testLoadBalancerSingleSecurityGroup = svcsdk.LoadBalancer{
+		SecurityGroups: []*string{aws.String("sg-00000")},
 	}
 )
 
@@ -59,9 +64,8 @@ func loadBalancer(m ...loadBalancerModifier) *v1alpha1.LoadBalancer {
 
 func TestIsUpToDateSecurityGroups(t *testing.T) {
 	type want struct {
-		resultBool   bool
-		resultString string
-		err          error
+		result bool
+		err    error
 	}
 
 	cases := map[string]struct {
@@ -72,28 +76,69 @@ func TestIsUpToDateSecurityGroups(t *testing.T) {
 			args: args{
 				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
 				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
-					&testLoadBalancer,
-				}},
+					&testLoadBalancerNilSecurityGroups}},
 			},
 			want: want{
-				resultBool:   true,
-				resultString: "",
-				err:          nil,
+				result: true,
+				err:    nil,
+			},
+		},
+		"NilSourceNilAwsNoUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySecurityGroups}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"EmptySourceNoUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SecurityGroups: []*string{}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySecurityGroups}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"NilSourceWithUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerSingleSecurityGroup}},
+			},
+			want: want{
+				result: false,
+				err:    nil,
+			},
+		},
+		"NilAwsWithUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SecurityGroups: []*string{aws.String("sg-000000")}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerSingleSecurityGroup}},
+			},
+			want: want{
+				result: false,
+				err:    nil,
 			},
 		},
 	}
 
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			resultBool, resultString := isUpToDateSecurityGroups(tc.args.cr, tc.args.obj)
+			// Act
+			result, _ := isUpToDateSecurityGroups(tc.args.cr, tc.args.obj)
 
 			// Assert
-			if diff := cmp.Diff(tc.want.resultString, resultString, test.EquateConditions()); diff != "" {
+			if diff := cmp.Diff(tc.want.result, result, test.EquateConditions()); diff != "" {
 				t.Errorf("r: -want, +got:\n%s", diff)
-			}
-
-			if resultBool != tc.want.resultBool {
-				t.Errorf("r: -want, +got:\n%s", strconv.FormatBool(resultBool))
 			}
 		})
 	}
