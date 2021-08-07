@@ -37,7 +37,11 @@ var (
 	}
 
 	testLoadBalancerSingleSecurityGroup = svcsdk.LoadBalancer{
-		SecurityGroups: []*string{aws.String("sg-00000")},
+		SecurityGroups: []*string{aws.String("sg-000000")},
+	}
+
+	testLoadBalancerDoubleSecurityGroups = svcsdk.LoadBalancer{
+		SecurityGroups: []*string{aws.String("sg-000000"), aws.String("sg-111111")},
 	}
 )
 
@@ -122,10 +126,47 @@ func TestIsUpToDateSecurityGroups(t *testing.T) {
 				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
 					SecurityGroups: []*string{aws.String("sg-000000")}})),
 				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySecurityGroups,
+				}},
+			},
+			want: want{
+				result: false,
+				err:    nil,
+			},
+		},
+		"NeedsUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SecurityGroups: []*string{aws.String("sg-111111")}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
 					&testLoadBalancerSingleSecurityGroup}},
 			},
 			want: want{
 				result: false,
+				err:    nil,
+			},
+		},
+		"NoUpdateNeededSortOrderIsDifferent": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SecurityGroups: []*string{aws.String("sg-111111"), aws.String("sg-000000")}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSecurityGroups}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"NoUpdateNeeded": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SecurityGroups: []*string{aws.String("sg-000000")}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerSingleSecurityGroup}},
+			},
+			want: want{
+				result: true,
 				err:    nil,
 			},
 		},
