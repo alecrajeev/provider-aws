@@ -50,17 +50,17 @@ var (
 
 	testLoadBalancerDoubleSubnets = svcsdk.LoadBalancer{
 		AvailabilityZones: []*svcsdk.AvailabilityZone{
-			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-000000")},
-			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-111111")},
+			{SubnetId: aws.String("subnet-000000")},
+			{SubnetId: aws.String("subnet-111111")},
 		},
 	}
 
 	testLoadBalancerDoubleSubnetMappings = svcsdk.LoadBalancer{
 		AvailabilityZones: []*svcsdk.AvailabilityZone{
-			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-000000"),
-				LoadBalancerAddresses: []*svcsdk.LoadBalancerAddress{&svcsdk.LoadBalancerAddress{PrivateIPv4Address: aws.String("172.16.0.6")}}},
-			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-111111"),
-				LoadBalancerAddresses: []*svcsdk.LoadBalancerAddress{&svcsdk.LoadBalancerAddress{PrivateIPv4Address: aws.String("172.16.24.6")}}},
+			{SubnetId: aws.String("subnet-000000"),
+				LoadBalancerAddresses: []*svcsdk.LoadBalancerAddress{{PrivateIPv4Address: aws.String("172.16.0.6")}}},
+			{SubnetId: aws.String("subnet-111111"),
+				LoadBalancerAddresses: []*svcsdk.LoadBalancerAddress{{PrivateIPv4Address: aws.String("172.16.24.6")}}},
 		},
 	}
 )
@@ -383,8 +383,8 @@ func TestIsUpToDateSubnetMappings(t *testing.T) {
 			args: args{
 				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
 					SubnetMappings: []*v1alpha1.SubnetMapping{
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.20.6")}}})),
+						{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
+						{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.20.6")}}})),
 				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
 					&testLoadBalancerEmptySubnets}},
 			},
@@ -397,9 +397,9 @@ func TestIsUpToDateSubnetMappings(t *testing.T) {
 			args: args{
 				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
 					SubnetMappings: []*v1alpha1.SubnetMapping{
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")},
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-222222"), PrivateIPv4Address: aws.String("172.16.28.6")}}})),
+						{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
+						{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")},
+						{SubnetID: aws.String("subnet-222222"), PrivateIPv4Address: aws.String("172.16.28.6")}}})),
 				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
 					&testLoadBalancerDoubleSubnetMappings}},
 			},
@@ -412,8 +412,8 @@ func TestIsUpToDateSubnetMappings(t *testing.T) {
 			args: args{
 				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
 					SubnetMappings: []*v1alpha1.SubnetMapping{
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")},
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")}}})),
+						{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")},
+						{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")}}})),
 				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
 					&testLoadBalancerDoubleSubnetMappings}},
 			},
@@ -426,8 +426,8 @@ func TestIsUpToDateSubnetMappings(t *testing.T) {
 			args: args{
 				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
 					SubnetMappings: []*v1alpha1.SubnetMapping{
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
-						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")}}})),
+						{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
+						{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")}}})),
 				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
 					&testLoadBalancerDoubleSubnetMappings}},
 			},
