@@ -63,12 +63,21 @@ var (
 				LoadBalancerAddresses: []*svcsdk.LoadBalancerAddress{{PrivateIPv4Address: aws.String("172.16.24.6")}}},
 		},
 	}
+
+	testEmptyTags = []*svcsdk.TagDescription{
+		{ResourceArn: aws.String("arn1"), Tags: []*svcsdk.Tag{}},
+	}
+
+	testExistingTag = []*svcsdk.TagDescription{
+		{ResourceArn: aws.String("arn2"), Tags: []*svcsdk.Tag{
+			{Key: aws.String("k2"), Value: aws.String("exists_in_obj")},
+		}},
+	}
 )
 
 type args struct {
-	cr      *v1alpha1.LoadBalancer
-	obj     *svcsdk.DescribeLoadBalancersOutput
-	objTags *svcsdk.DescribeTagsOutput
+	cr  *v1alpha1.LoadBalancer
+	obj *svcsdk.DescribeLoadBalancersOutput
 }
 
 type loadBalancerModifier func(*v1alpha1.LoadBalancer)
@@ -445,6 +454,78 @@ func TestIsUpToDateSubnetMappings(t *testing.T) {
 
 			// Assert
 			if diff := cmp.Diff(tc.want.result, result, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestDiffTags(t *testing.T) {
+	type args struct {
+		cr  []*v1alpha1.Tag
+		obj *svcsdk.DescribeTagsOutput
+	}
+
+	type want struct {
+		addTags    map[string]*string
+		removeTags []*string
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"EmptyTags": {
+			args: args{
+				cr: []*v1alpha1.Tag{},
+				obj: &svcsdk.DescribeTagsOutput{
+					TagDescriptions: testEmptyTags,
+				},
+			},
+			want: want{
+				addTags:    map[string]*string{},
+				removeTags: []*string{},
+			},
+		},
+		"AddNewTag": {
+			args: args{
+				cr: []*v1alpha1.Tag{
+					{Key: aws.String("k1"), Value: aws.String("exists_in_cr")},
+					{Key: aws.String("k2"), Value: aws.String("exists_in_both")},
+				},
+				obj: &svcsdk.DescribeTagsOutput{
+					TagDescriptions: testExistingTag},
+			},
+			want: want{
+				addTags: map[string]*string{
+					"k1": aws.String("exists_in_cr"),
+				},
+				removeTags: []*string{},
+			},
+		},
+		"RemoveExistingTag": {
+			args: args{
+				cr: []*v1alpha1.Tag{},
+				obj: &svcsdk.DescribeTagsOutput{
+					TagDescriptions: testExistingTag},
+			},
+			want: want{
+				addTags:    map[string]*string{},
+				removeTags: []*string{aws.String("k2")},
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			addTags, removeTags, _ := diffTags(tc.args.cr, tc.args.obj)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.addTags, addTags, test.EquateErrors()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+			if diff := cmp.Diff(tc.want.removeTags, removeTags, test.EquateConditions()); diff != "" {
 				t.Errorf("r: -want, +got:\n%s", diff)
 			}
 		})
