@@ -54,6 +54,15 @@ var (
 			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-111111")},
 		},
 	}
+
+	testLoadBalancerDoubleSubnetMappings = svcsdk.LoadBalancer{
+		AvailabilityZones: []*svcsdk.AvailabilityZone{
+			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-000000"),
+				LoadBalancerAddresses: []*svcsdk.LoadBalancerAddress{&svcsdk.LoadBalancerAddress{PrivateIPv4Address: aws.String("172.16.0.6")}}},
+			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-111111"),
+				LoadBalancerAddresses: []*svcsdk.LoadBalancerAddress{&svcsdk.LoadBalancerAddress{PrivateIPv4Address: aws.String("172.16.24.6")}}},
+		},
+	}
 )
 
 type args struct {
@@ -352,6 +361,75 @@ func TestIsUpToDateSubnetMappings(t *testing.T) {
 					SubnetMappings: []*v1alpha1.SubnetMapping{}})),
 				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
 					&testLoadBalancerEmptySubnets}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"NilSourceWithUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SubnetMappings: []*v1alpha1.SubnetMapping{}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSubnetMappings}},
+			},
+			want: want{
+				result: false,
+				err:    nil,
+			},
+		},
+		"NilAwsWithUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SubnetMappings: []*v1alpha1.SubnetMapping{
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.20.6")}}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySubnets}},
+			},
+			want: want{
+				result: false,
+				err:    nil,
+			},
+		},
+		"NeedsUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SubnetMappings: []*v1alpha1.SubnetMapping{
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")},
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-222222"), PrivateIPv4Address: aws.String("172.16.28.6")}}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSubnetMappings}},
+			},
+			want: want{
+				result: false,
+				err:    nil,
+			},
+		},
+		"NoUpdateNeededSortOrderIsDifferent": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SubnetMappings: []*v1alpha1.SubnetMapping{
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")},
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")}}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSubnetMappings}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"NoUpdateNeeded": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SubnetMappings: []*v1alpha1.SubnetMapping{
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
+						&v1alpha1.SubnetMapping{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.24.6")}}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSubnetMappings}},
 			},
 			want: want{
 				result: true,
