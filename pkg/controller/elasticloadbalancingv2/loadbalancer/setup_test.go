@@ -313,3 +313,62 @@ func TestIsUpToDateSubnets(t *testing.T) {
 		})
 	}
 }
+
+func TestIsUpToDateSubnetMappings(t *testing.T) {
+	type want struct {
+		result bool
+		err    error
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"NilSourceNoUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerNilSecurityGroups}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"NilSourceNilAwsNoUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySubnets}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"EmptySourceNoUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SubnetMappings: []*v1alpha1.SubnetMapping{}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySubnets}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			result, _ := isUpToDateSubnetMappings(tc.args.cr, tc.args.obj)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.result, result, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
