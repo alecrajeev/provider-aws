@@ -43,6 +43,17 @@ var (
 	testLoadBalancerDoubleSecurityGroups = svcsdk.LoadBalancer{
 		SecurityGroups: []*string{aws.String("sg-000000"), aws.String("sg-111111")},
 	}
+
+	testLoadBalancerEmptySubnets = svcsdk.LoadBalancer{
+		AvailabilityZones: []*svcsdk.AvailabilityZone{},
+	}
+
+	testLoadBalancerDoubleSubnets = svcsdk.LoadBalancer{
+		AvailabilityZones: []*svcsdk.AvailabilityZone{
+			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-000000")},
+			&svcsdk.AvailabilityZone{SubnetId: aws.String("subnet-111111")},
+		},
+	}
 )
 
 type args struct {
@@ -176,6 +187,124 @@ func TestIsUpToDateSecurityGroups(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// Act
 			result, _ := isUpToDateSecurityGroups(tc.args.cr, tc.args.obj)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.result, result, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestIsUpToDateSubnets(t *testing.T) {
+	type want struct {
+		result bool
+		err    error
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"NilSourceNoUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerNilSecurityGroups}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"NilSourceNilAwsNoUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySubnets}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"EmptySourceNoUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					Subnets: []*string{}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySubnets}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"NilSourceWithUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSubnets}},
+			},
+			want: want{
+				result: false,
+				err:    nil,
+			},
+		},
+		"NilAwsWithUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					Subnets: []*string{aws.String("subnet-000000"), aws.String("subnet-111111")}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerEmptySubnets,
+				}},
+			},
+		},
+		"NeedsUpdate": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					Subnets: []*string{aws.String("subnet-000000"), aws.String("subnet-111111"), aws.String("subnet-222222")}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSubnets,
+				}},
+			},
+			want: want{
+				result: false,
+				err:    nil,
+			},
+		},
+		"NoUpdateNeededSortOrderIsDifferent": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					Subnets: []*string{aws.String("subnet-111111"), aws.String("subnet-000000")}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSubnets,
+				}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+		"NoUpdateNeeded": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					Subnets: []*string{aws.String("subnet-000000"), aws.String("subnet-111111")}})),
+				obj: &svcsdk.DescribeLoadBalancersOutput{LoadBalancers: []*svcsdk.LoadBalancer{
+					&testLoadBalancerDoubleSubnets,
+				}},
+			},
+			want: want{
+				result: true,
+				err:    nil,
+			},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			result, _ := isUpToDateSubnets(tc.args.cr, tc.args.obj)
 
 			// Assert
 			if diff := cmp.Diff(tc.want.result, result, test.EquateConditions()); diff != "" {
