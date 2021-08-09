@@ -65,13 +65,17 @@ var (
 	}
 
 	testEmptyTags = []*svcsdk.TagDescription{
-		{ResourceArn: aws.String("arn1"), Tags: []*svcsdk.Tag{}},
+		{ResourceArn: aws.String("arn:aws:elasticloadbalancing:us-east-2:123456789012:loadbalancer/app/my-load-balancer1/1234567890123456"), Tags: []*svcsdk.Tag{}},
 	}
 
 	testExistingTag = []*svcsdk.TagDescription{
-		{ResourceArn: aws.String("arn2"), Tags: []*svcsdk.Tag{
+		{ResourceArn: aws.String("arn:aws:elasticloadbalancing:us-east-2:123456789012:loadbalancer/app/my-load-balancer2/1234567890123456"), Tags: []*svcsdk.Tag{
 			{Key: aws.String("k2"), Value: aws.String("exists_in_obj")},
 		}},
+	}
+
+	testAddTagsMap = map[string]*string{
+		"k1": aws.String("val1"),
 	}
 )
 
@@ -556,6 +560,224 @@ func TestDiffTags(t *testing.T) {
 				t.Errorf("r: -want, +got:\n%s", diff)
 			}
 			if diff := cmp.Diff(tc.want.removeTags, removeTags, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateSetIPAddressTypeInput(t *testing.T) {
+	type args struct {
+		cr *v1alpha1.LoadBalancer
+	}
+	type want struct {
+		obj *svcsdk.SetIpAddressTypeInput
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"ChangeToDualStack": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					IPAddressType: aws.String("dualstack"),
+				})),
+			},
+			want: want{
+				obj: &svcsdk.SetIpAddressTypeInput{
+					LoadBalancerArn: aws.String(""),
+					IpAddressType:   aws.String("dualstack"),
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			actual := GenerateSetIPAddressTypeInput(tc.args.cr)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.obj, actual, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateSetSecurityGroupsInput(t *testing.T) {
+	type args struct {
+		cr *v1alpha1.LoadBalancer
+	}
+	type want struct {
+		obj *svcsdk.SetSecurityGroupsInput
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"UpdateSecurityGroups": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SecurityGroups: []*string{aws.String("sg-111111")},
+				})),
+			},
+			want: want{
+				obj: &svcsdk.SetSecurityGroupsInput{
+					LoadBalancerArn: aws.String(""),
+					SecurityGroups:  []*string{aws.String("sg-111111")},
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			actual := GenerateSetSecurityGroupsInput(tc.args.cr)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.obj, actual, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateSetSubnetsInput(t *testing.T) {
+	type args struct {
+		cr *v1alpha1.LoadBalancer
+	}
+	type want struct {
+		obj *svcsdk.SetSubnetsInput
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"UpdateSubnets": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					Subnets: []*string{aws.String("subnet-000000"), aws.String("subnet-111111")},
+				})),
+			},
+			want: want{
+				obj: &svcsdk.SetSubnetsInput{
+					LoadBalancerArn: aws.String(""),
+					Subnets:         []*string{aws.String("subnet-000000"), aws.String("subnet-111111")},
+				},
+			},
+		},
+		"UpdateSubnetMappings": {
+			args: args{
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					SubnetMappings: []*v1alpha1.SubnetMapping{
+						{SubnetID: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
+						{SubnetID: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.20.6")},
+					},
+				})),
+			},
+			want: want{
+				obj: &svcsdk.SetSubnetsInput{
+					LoadBalancerArn: aws.String(""),
+					SubnetMappings: []*svcsdk.SubnetMapping{
+						{SubnetId: aws.String("subnet-000000"), PrivateIPv4Address: aws.String("172.16.0.6")},
+						{SubnetId: aws.String("subnet-111111"), PrivateIPv4Address: aws.String("172.16.20.6")},
+					},
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			actual := GenerateSetSubnetsInput(tc.args.cr)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.obj, actual, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateAddTagsInput(t *testing.T) {
+	type args struct {
+		addTags map[string]*string
+		cr      *v1alpha1.LoadBalancer
+	}
+	type want struct {
+		obj *svcsdk.AddTagsInput
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"AddNewTag": {
+			args: args{
+				addTags: testAddTagsMap,
+				cr:      loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{})),
+			},
+			want: want{
+				obj: &svcsdk.AddTagsInput{
+					ResourceArns: []*string{aws.String("")},
+					Tags: []*svcsdk.Tag{
+						{Key: aws.String("k1"), Value: aws.String("val1")},
+					},
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			actual := GenerateAddTagsInput(tc.args.addTags, tc.args.cr)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.obj, actual, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateRemoveTagsInput(t *testing.T) {
+	type args struct {
+		removeTags []*string
+		cr         *v1alpha1.LoadBalancer
+	}
+	type want struct {
+		obj *svcsdk.RemoveTagsInput
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"AddNewTag": {
+			args: args{
+				removeTags: []*string{aws.String("k1")},
+				cr: loadBalancer(withSpec(v1alpha1.LoadBalancerParameters{
+					Tags: []*v1alpha1.Tag{
+						{Key: aws.String("k1"), Value: aws.String("v1")}}})),
+			},
+			want: want{
+				obj: &svcsdk.RemoveTagsInput{
+					ResourceArns: []*string{aws.String("")},
+					TagKeys:      []*string{aws.String("k1")},
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			actual := GenerateRemoveTagsInput(tc.args.removeTags, tc.args.cr)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.obj, actual, test.EquateConditions()); diff != "" {
 				t.Errorf("r: -want, +got:\n%s", diff)
 			}
 		})
