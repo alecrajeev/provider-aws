@@ -77,6 +77,14 @@ var (
 	testAddTagsMap = map[string]*string{
 		"k1": aws.String("val1"),
 	}
+
+	testDescribeTagsOutput = svcsdk.DescribeTagsOutput{
+		TagDescriptions: testExistingTag,
+	}
+
+	testCRTags = []*v1alpha1.Tag{
+		{Key: aws.String("k1"), Value: aws.String("val1")},
+	}
 )
 
 type args struct {
@@ -778,6 +786,78 @@ func TestGenerateRemoveTagsInput(t *testing.T) {
 
 			// Assert
 			if diff := cmp.Diff(tc.want.obj, actual, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateMapFromTagsResponseOutput(t *testing.T) {
+	type args struct {
+		respTags *svcsdk.DescribeTagsOutput
+	}
+	type want struct {
+		objTags map[string]*string
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"GetMapFromTag": {
+			args: args{
+				respTags: &testDescribeTagsOutput,
+			},
+			want: want{
+				objTags: map[string]*string{
+					"k2": aws.String("exists_in_obj"),
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			actual := GenerateMapFromTagsResponseOutput(tc.args.respTags)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.objTags, actual, test.EquateConditions()); diff != "" {
+				t.Errorf("r: -want, +got:\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestGenerateMapFromTagsCR(t *testing.T) {
+	type args struct {
+		crTags []*v1alpha1.Tag
+	}
+	type want struct {
+		objTags map[string]*string
+	}
+
+	cases := map[string]struct {
+		args
+		want
+	}{
+		"GetMapFromTag": {
+			args: args{
+				crTags: testCRTags,
+			},
+			want: want{
+				objTags: map[string]*string{
+					"k1": aws.String("val1"),
+				},
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// Act
+			actual := GenerateMapFromTagsCR(tc.args.crTags)
+
+			// Assert
+			if diff := cmp.Diff(tc.want.objTags, actual, test.EquateConditions()); diff != "" {
 				t.Errorf("r: -want, +got:\n%s", diff)
 			}
 		})
