@@ -491,7 +491,7 @@ func TestDiffTags(t *testing.T) {
 			args: args{
 				cr: []*v1alpha1.Tag{
 					{Key: aws.String("k1"), Value: aws.String("exists_in_cr")},
-					{Key: aws.String("k2"), Value: aws.String("exists_in_both")},
+					{Key: aws.String("k2"), Value: aws.String("exists_in_obj")},
 				},
 				obj: &svcsdk.DescribeTagsOutput{
 					TagDescriptions: testExistingTag},
@@ -512,6 +512,36 @@ func TestDiffTags(t *testing.T) {
 			want: want{
 				addTags:    map[string]*string{},
 				removeTags: []*string{aws.String("k2")},
+			},
+		},
+		"AddAndRemoveWhenKeyChanges": {
+			args: args{
+				cr: []*v1alpha1.Tag{
+					{Key: aws.String("k2"), Value: aws.String("same_key_different_value1")},
+				},
+				obj: &svcsdk.DescribeTagsOutput{
+					TagDescriptions: testExistingTag},
+			},
+			want: want{
+				addTags: map[string]*string{
+					"k2": aws.String("same_key_different_value1"),
+				},
+				removeTags: []*string{
+					aws.String("k2")},
+			},
+		},
+		"NoChange": {
+			args: args{
+				cr: []*v1alpha1.Tag{
+					{Key: aws.String("k2"), Value: aws.String("exists_in_obj")},
+				},
+				obj: &svcsdk.DescribeTagsOutput{
+					TagDescriptions: testExistingTag,
+				},
+			},
+			want: want{
+				addTags:    map[string]*string{},
+				removeTags: []*string{},
 			},
 		},
 	}
