@@ -87,6 +87,7 @@ import (
 	"github.com/crossplane/provider-aws/pkg/controller/eks/nodegroup"
 	"github.com/crossplane/provider-aws/pkg/controller/elasticloadbalancing/elb"
 	"github.com/crossplane/provider-aws/pkg/controller/elasticloadbalancing/elbattachment"
+	"github.com/crossplane/provider-aws/pkg/controller/elasticsearchservice/elasticsearchdomain"
 	"github.com/crossplane/provider-aws/pkg/controller/elbv2/listener"
 	"github.com/crossplane/provider-aws/pkg/controller/elbv2/loadbalancer"
 	"github.com/crossplane/provider-aws/pkg/controller/elbv2/targetgroup"
@@ -259,6 +260,7 @@ func Setup(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter, poll ti
 		targetgroup.SetupTargetGroup,
 		transitgatewayroute.SetupTransitGatewayRoute,
 		transitgatewayroutetable.SetupTransitGatewayRouteTable,
+		elasticsearchdomain.SetupElasticsearchDomain,
 	} {
 		if err := setup(mgr, l, rl, poll); err != nil {
 			return err
