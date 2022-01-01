@@ -139,10 +139,6 @@ type DomainInformation struct {
 	// or number and can contain the following characters: a-z (lowercase), 0-9,
 	// and - (hyphen).
 	DomainName *string `json:"domainName,omitempty"`
-
-	OwnerID *string `json:"ownerID,omitempty"`
-
-	Region *string `json:"region,omitempty"`
 }
 
 // +kubebuilder:skipversion
@@ -300,27 +296,6 @@ type EncryptionAtRestOptionsStatus struct {
 }
 
 // +kubebuilder:skipversion
-type Filter struct {
-	Name *string `json:"name,omitempty"`
-
-	Values []*string `json:"values,omitempty"`
-}
-
-// +kubebuilder:skipversion
-type InboundCrossClusterSearchConnection struct {
-	CrossClusterSearchConnectionID *string `json:"crossClusterSearchConnectionID,omitempty"`
-
-	DestinationDomainInfo *DomainInformation `json:"destinationDomainInfo,omitempty"`
-
-	SourceDomainInfo *DomainInformation `json:"sourceDomainInfo,omitempty"`
-}
-
-// +kubebuilder:skipversion
-type InboundCrossClusterSearchConnectionStatus struct {
-	Message *string `json:"message,omitempty"`
-}
-
-// +kubebuilder:skipversion
 type LogPublishingOption struct {
 	// ARN of the Cloudwatch log group to which log needs to be published.
 	CloudWatchLogsLogGroupARN *string `json:"cloudWatchLogsLogGroupARN,omitempty"`
@@ -359,26 +334,6 @@ type NodeToNodeEncryptionOptionsStatus struct {
 // +kubebuilder:skipversion
 type OptionStatus struct {
 	PendingDeletion *bool `json:"pendingDeletion,omitempty"`
-}
-
-// +kubebuilder:skipversion
-type OutboundCrossClusterSearchConnectionStatus_SDK struct {
-	Message *string `json:"message,omitempty"`
-
-	StatusCode *string `json:"statusCode,omitempty"`
-}
-
-// +kubebuilder:skipversion
-type OutboundCrossClusterSearchConnection_SDK struct {
-	ConnectionAlias *string `json:"connectionAlias,omitempty"`
-	// Specifies the connection status of an outbound cross-cluster search connection.
-	ConnectionStatus *OutboundCrossClusterSearchConnectionStatus_SDK `json:"connectionStatus,omitempty"`
-
-	CrossClusterSearchConnectionID *string `json:"crossClusterSearchConnectionID,omitempty"`
-
-	DestinationDomainInfo *DomainInformation `json:"destinationDomainInfo,omitempty"`
-
-	SourceDomainInfo *DomainInformation `json:"sourceDomainInfo,omitempty"`
 }
 
 // +kubebuilder:skipversion
