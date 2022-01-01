@@ -103,13 +103,6 @@ type CompatibleVersionsMap struct {
 }
 
 // +kubebuilder:skipversion
-type DescribePackagesFilter struct {
-	Name *string `json:"name,omitempty"`
-
-	Value []*string `json:"value,omitempty"`
-}
-
-// +kubebuilder:skipversion
 type DomainEndpointOptions struct {
 	CustomEndpoint *string `json:"customEndpoint,omitempty"`
 	// The Amazon Resource Name (ARN) of the Elasticsearch domain. See Identifiers
@@ -159,18 +152,6 @@ type DomainPackageDetails struct {
 	// or number and can contain the following characters: a-z (lowercase), 0-9,
 	// and - (hyphen).
 	DomainName *string `json:"domainName,omitempty"`
-
-	ErrorDetails *ErrorDetails `json:"errorDetails,omitempty"`
-
-	LastUpdated *metav1.Time `json:"lastUpdated,omitempty"`
-
-	PackageID *string `json:"packageID,omitempty"`
-
-	PackageName *string `json:"packageName,omitempty"`
-
-	PackageType *string `json:"packageType,omitempty"`
-
-	PackageVersion *string `json:"packageVersion,omitempty"`
 }
 
 // +kubebuilder:skipversion
@@ -319,13 +300,6 @@ type EncryptionAtRestOptionsStatus struct {
 }
 
 // +kubebuilder:skipversion
-type ErrorDetails struct {
-	ErrorMessage *string `json:"errorMessage,omitempty"`
-
-	ErrorType *string `json:"errorType,omitempty"`
-}
-
-// +kubebuilder:skipversion
 type Filter struct {
 	Name *string `json:"name,omitempty"`
 
@@ -405,43 +379,6 @@ type OutboundCrossClusterSearchConnection_SDK struct {
 	DestinationDomainInfo *DomainInformation `json:"destinationDomainInfo,omitempty"`
 
 	SourceDomainInfo *DomainInformation `json:"sourceDomainInfo,omitempty"`
-}
-
-// +kubebuilder:skipversion
-type PackageDetails struct {
-	AvailablePackageVersion *string `json:"availablePackageVersion,omitempty"`
-
-	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
-
-	ErrorDetails *ErrorDetails `json:"errorDetails,omitempty"`
-
-	LastUpdatedAt *metav1.Time `json:"lastUpdatedAt,omitempty"`
-
-	PackageDescription *string `json:"packageDescription,omitempty"`
-
-	PackageID *string `json:"packageID,omitempty"`
-
-	PackageName *string `json:"packageName,omitempty"`
-
-	PackageStatus *string `json:"packageStatus,omitempty"`
-
-	PackageType *string `json:"packageType,omitempty"`
-}
-
-// +kubebuilder:skipversion
-type PackageSource struct {
-	S3BucketName *string `json:"s3BucketName,omitempty"`
-
-	S3Key *string `json:"s3Key,omitempty"`
-}
-
-// +kubebuilder:skipversion
-type PackageVersionHistory struct {
-	CommitMessage *string `json:"commitMessage,omitempty"`
-
-	CreatedAt *metav1.Time `json:"createdAt,omitempty"`
-
-	PackageVersion *string `json:"packageVersion,omitempty"`
 }
 
 // +kubebuilder:skipversion

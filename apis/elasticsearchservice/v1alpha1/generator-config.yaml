@@ -1,1 +1,5 @@
 model_name: es
+ignore:
+  resource_names:
+    - OutboundRossClusterSearchConnection
+    - Package

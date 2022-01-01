@@ -157,17 +157,17 @@ const (
 	OutboundCrossClusterSearchConnectionStatusCode_DELETED            OutboundCrossClusterSearchConnectionStatusCode = "DELETED"
 )
 
-type PackageStatus_SDK string
+type PackageStatus string
 
 const (
-	PackageStatus_SDK_COPYING           PackageStatus_SDK = "COPYING"
-	PackageStatus_SDK_COPY_FAILED       PackageStatus_SDK = "COPY_FAILED"
-	PackageStatus_SDK_VALIDATING        PackageStatus_SDK = "VALIDATING"
-	PackageStatus_SDK_VALIDATION_FAILED PackageStatus_SDK = "VALIDATION_FAILED"
-	PackageStatus_SDK_AVAILABLE         PackageStatus_SDK = "AVAILABLE"
-	PackageStatus_SDK_DELETING          PackageStatus_SDK = "DELETING"
-	PackageStatus_SDK_DELETED           PackageStatus_SDK = "DELETED"
-	PackageStatus_SDK_DELETE_FAILED     PackageStatus_SDK = "DELETE_FAILED"
+	PackageStatus_COPYING           PackageStatus = "COPYING"
+	PackageStatus_COPY_FAILED       PackageStatus = "COPY_FAILED"
+	PackageStatus_VALIDATING        PackageStatus = "VALIDATING"
+	PackageStatus_VALIDATION_FAILED PackageStatus = "VALIDATION_FAILED"
+	PackageStatus_AVAILABLE         PackageStatus = "AVAILABLE"
+	PackageStatus_DELETING          PackageStatus = "DELETING"
+	PackageStatus_DELETED           PackageStatus = "DELETED"
+	PackageStatus_DELETE_FAILED     PackageStatus = "DELETE_FAILED"
 )
 
 type PackageType string
