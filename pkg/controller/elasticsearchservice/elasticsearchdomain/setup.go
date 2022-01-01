@@ -16,8 +16,8 @@ import (
 	svcapitypes "github.com/crossplane/provider-aws/apis/elasticsearchservice/v1alpha1"
 )
 
-// SetupStage adds a controller that reconciles Stage.
-func SetupStage(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter, poll time.Duration) error {
+// SetupElasticsearchDomain adds a controller that reconciles ElasticsearchDomain.
+func SetupElasticsearchDomain(mgr ctrl.Manager, l logging.Logger, rl workqueue.RateLimiter, poll time.Duration) error {
 	name := managed.ControllerName(svcapitypes.ElasticsearchDomainKind)
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
