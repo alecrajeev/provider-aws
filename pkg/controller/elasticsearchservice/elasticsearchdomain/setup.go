@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -26,6 +27,8 @@ func SetupElasticsearchDomain(mgr ctrl.Manager, l logging.Logger, rl workqueue.R
 	opts := []option{
 		func(e *external) {
 			e.preObserve = preObserve
+			e.postCreate = postCreate
+			e.postObserve = postObserve
 		},
 	}
 	return ctrl.NewControllerManagedBy(mgr).
@@ -46,4 +49,31 @@ func SetupElasticsearchDomain(mgr ctrl.Manager, l logging.Logger, rl workqueue.R
 func preObserve(_ context.Context, cr *svcapitypes.ElasticsearchDomain, obj *svcsdk.DescribeElasticsearchDomainInput) error {
 	obj.DomainName = aws.String(meta.GetExternalName(cr))
 	return nil
+}
+
+// postCreate sets the external name annotation of the ElasticsearchDomain CRD after the create API call has been performed.
+// The managed.WithInitializers() setting in the setup controller means that the external name annotation is not initially set.
+func postCreate(_ context.Context, cr *svcapitypes.ElasticsearchDomain, resp *svcsdk.CreateElasticsearchDomainOutput, cre managed.ExternalCreation, err error) (managed.ExternalCreation, error) {
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
+	meta.SetExternalName(cr, aws.StringValue(resp.DomainStatus.DomainName))
+	return cre, nil
+}
+
+func postObserve(_ context.Context, cr *svcapitypes.ElasticsearchDomain, resp *svcsdk.DescribeElasticsearchDomainOutput, obs managed.ExternalObservation, err error) (managed.ExternalObservation, error) {
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+	if !*resp.DomainStatus.Created {
+		cr.SetConditions(xpv1.Creating())
+	} else {
+		// Verify that both the Service Software and Elasticsearch version are not being upgraded.
+		if !*resp.DomainStatus.UpgradeProcessing && *resp.DomainStatus.ServiceSoftwareOptions.UpdateStatus != string(svcapitypes.DeploymentStatus_IN_PROGRESS) {
+			cr.SetConditions(xpv1.Available())
+		} else {
+			cr.SetConditions(xpv1.Unavailable())
+		}
+	}
+	return obs, nil
 }
