@@ -29,6 +29,7 @@ func SetupElasticsearchDomain(mgr ctrl.Manager, l logging.Logger, rl workqueue.R
 			e.preObserve = preObserve
 			e.postCreate = postCreate
 			e.postObserve = postObserve
+			e.lateInitialize = lateInitialize
 		},
 	}
 	return ctrl.NewControllerManagedBy(mgr).
@@ -76,4 +77,20 @@ func postObserve(_ context.Context, cr *svcapitypes.ElasticsearchDomain, resp *s
 		}
 	}
 	return obs, nil
+}
+
+// LateInitialize fills the empty fields in *svcapitypes.ElasticsearchDomainParameters with
+// the values seen in svcsdk.DescribeElasticsearchDomainOutput.
+func lateInitialize(cr *svcapitypes.ElasticsearchDomainParameters, resp *svcsdk.DescribeElasticsearchDomainOutput) error {
+	cr.ElasticsearchVersion = resp.DomainStatus.ElasticsearchVersion
+	cr.ElasticsearchClusterConfig.DedicatedMasterEnabled = resp.DomainStatus.ElasticsearchClusterConfig.DedicatedMasterEnabled
+	cr.ElasticsearchClusterConfig.WarmEnabled = resp.DomainStatus.ElasticsearchClusterConfig.WarmEnabled
+	cr.ElasticsearchClusterConfig.ZoneAwarenessEnabled = resp.DomainStatus.ElasticsearchClusterConfig.ZoneAwarenessEnabled
+	if cr.AdvancedOptions == nil {
+		cr.AdvancedOptions = make(map[string]*string, 2)
+	}
+	cr.AdvancedOptions["override_main_response_version"] = resp.DomainStatus.AdvancedOptions["override_main_response_version"]
+	cr.AdvancedOptions["rest.action.multi.allow_explicit_index"] = resp.DomainStatus.AdvancedOptions["rest.action.multi.allow_explicit_index"]
+
+	return nil
 }
