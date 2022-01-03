@@ -1,0 +1,22 @@
+apiVersion: elasticsearchservice.aws.crossplane.io/v1alpha1
+kind: ElasticsearchDomain
+metadata:
+  name: sample-elasticsearchdomain
+spec:
+  providerConfigRef:
+    name: example
+  forProvider:
+    domainName: sample-elasticsearchdomain
+    region: us-east-1
+    elasticsearchClusterConfig:
+      instanceType: t2.micro.elasticsearch
+      instanceCount: 1
+    ebsOptions:
+      ebsEnabled: true
+      volumeType: gp2
+      volumeSize: 10
+    vpcOptions:
+      securityGroupIDs:
+        - sg-18d47961
+      subnetIDs:
+        - subnet-3500f16d
